@@ -41,24 +41,54 @@ def img_width(images_lst, parent_width):
     return int(parent_width / col_num)
 
 
+def get_image(img_url):
+        response = requests.get(img_url)
+        img = Image.open(BytesIO(response.content))
+        return img
+
+
+def get_croped_image(image, index, source_height, source_width):
+
+        img_w, img_h = image.size
+
+        width_ratio = img_w / source_width
+        height_ratio = img_h / source_height
+
+        ratio = min(width_ratio, height_ratio)
+
+        new_height = ratio * source_height
+        new_width = ratio * source_width
+
+        height_diff = img_h - new_height
+        width_diff = img_w - new_width
+
+        left = 0 + (width_diff / 2)
+        upper = 0 + (height_diff / 2)
+        right = img_w - (width_diff / 2)
+        down = img_h - (height_diff / 2)
+
+        crop_img = image.crop((left, upper, right, down))
+
+        return crop_img
+
+
 def get_result(res, images_lst):
     result = Image.new("RGB", (res[0], res[1]))
+    result_w, result_h = result.size
+    final_height = img_height(images_lst, result_h)
+    final_width = img_width(images_lst, result_w)
+
     for index, image in enumerate(images_lst):
-        response = requests.get(image)
-        img = Image.open(BytesIO(response.content))
-        w, h = result.size
-        # calculating height and width of  image depending of number of images
-        resize_height = img_height(images_lst, h)
-        resize_width = img_width(images_lst, w)
-        resized_img = img.resize((resize_width, resize_height))
-
+        img = get_image(image)
+        if index == (len(images_lst) - 1) and index != 0 and index % 2 == 0:
+            final_width = 2 * final_width
+        crop_img = get_croped_image(img, index, final_height, final_width)
+        final_photo = crop_img.resize((final_width, final_height))
         # calculating position of image
-        x = index % 2 * resize_width
-        y = index // 2 * resize_height
-
+        x = index % 2 * final_width
+        y = index // 2 * final_height
         # psting image onto canvas of result
-        result.paste(resized_img, (x, y))
-
+        result.paste(final_photo, (x, y))
     return result
 
 
