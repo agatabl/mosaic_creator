@@ -1,4 +1,4 @@
-from flask import send_file
+from flask import send_file, render_template
 import requests
 from PIL import Image
 from io import BytesIO
@@ -8,8 +8,11 @@ from random import shuffle
 def urls_to_list(urls, order):
     urls_list = urls.split(',')
     if order:
-        if int(order) == 1:
-            shuffle(urls_list)
+        try:
+            if int(order) == 1:
+                shuffle(urls_list)
+        finally:
+            return urls_list
     return urls_list
 
 
@@ -41,7 +44,8 @@ def img_width(images_lst, parent_width):
 def get_result(res, images_lst):
     result = Image.new("RGB", (res[0], res[1]))
     for index, image in enumerate(images_lst):
-        img = Image.open(BytesIO(requests.get(image).content))
+        response = requests.get(image)
+        img = Image.open(BytesIO(response.content))
         w, h = result.size
         # calculating height and width of  image depending of number of images
         resize_height = img_height(images_lst, h)
@@ -54,12 +58,17 @@ def get_result(res, images_lst):
 
         # psting image onto canvas of result
         result.paste(resized_img, (x, y))
+
     return result
 
 
 def send_result(resolution, images):
-    result = get_result(resolution, images)
-    bytes_result = BytesIO()
-    result.save(bytes_result, 'JPEG', quality=70)
-    bytes_result.seek(0)
-    return send_file(bytes_result, mimetype='image/jpeg')
+    try:
+        result = get_result(resolution, images)
+        bytes_result = BytesIO()
+        result.save(bytes_result, 'JPEG', quality=70)
+        bytes_result.seek(0)
+        return send_file(bytes_result, mimetype='image/jpeg')
+    except requests.exceptions.RequestException as e:
+        print(e)
+        return render_template('error.html')
