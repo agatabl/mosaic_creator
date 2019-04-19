@@ -1,8 +1,9 @@
-from flask import send_file, render_template
+from flask import send_file, render_template, Response
 import requests
 from PIL import Image
 from io import BytesIO
 from random import shuffle
+from werkzeug import FileWrapper
 
 
 def urls_to_list(urls, order):
@@ -98,7 +99,9 @@ def send_result(resolution, images):
         bytes_result = BytesIO()
         result.save(bytes_result, 'JPEG', quality=70)
         bytes_result.seek(0)
-        return send_file(bytes_result, mimetype='image/jpeg')
+        file = FileWrapper(bytes_result)
+        return Response(file, mimetype='image/jpeg', direct_passthrough=True)
+        # return send_file(bytes_result, mimetype='image/jpeg')
     except requests.exceptions.RequestException as e:
         print(e)
         return render_template('error.html')
